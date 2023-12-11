@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Management</title>
+    <style>body{font-family:Arial,sans-serif;background-color:#f4f4f4;margin:0;padding:20px;color:#333}h1,h2{color:#333}form{background:#fff;padding:20px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,.1)}label{display:block;margin-bottom:5px}input[type=number],input[type=text]{width:100%;padding:10px;margin-bottom:20px;border-radius:4px;border:1px solid #ddd;box-sizing:border-box}input[type=submit]{background-color:#0056b3;color:#fff;padding:10px 20px;border:none;border-radius:4px;cursor:pointer}input[type=submit]:hover{background-color:#004494}table{width:100%;border-collapse:collapse;margin-top:20px}table,td,th{border:1px solid #ddd}td,th{text-align:left;padding:8px}th{background-color:#f0f0f0}tr:nth-child(even){background-color:#f9f9f9}button{background-color:#4caf50;color:#fff;padding:5px 10px;margin:2px;border:none;border-radius:4px;cursor:pointer}button:hover{background-color:#45a049}.delete-button{background-color:#f44336}.delete-button:hover{background-color:#d32f2f}</style>
+</head>
+<body>
+<h1>Student Management</h1>
+
+<!-- Add/Edit Student Form -->
+<h2 id="formHeader">Add Student</h2>
+<form id="studentForm">
+    <input type="hidden" id="studentId"> <!-- Hidden field for student ID -->
+
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" required><br><br>
+
+    <label for="age">Age:</label>
+    <input type="number" id="age" name="age" required><br><br>
+
+    <input type="submit" value="Submit">
+</form>
+
+<!-- List of Students -->
+<h2>All Students</h2>
+<table id="studentsTable">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Age</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- Students will be added here dynamically -->
+    </tbody>
+</table>
+
+<script>
+    document.getElementById('studentForm').onsubmit = function(event) {
+        event.preventDefault();
+        var studentId = document.getElementById('studentId').value;
+        var student = {
+            name: this.name.value,
+            age: this.age.value
+        };
+
+        var method = studentId ? 'PUT' : 'POST';
+        var endpoint = studentId ? '/students/' + studentId : '/students';
+
+        fetch(endpoint, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(student)
+        }).then(function(response) {
+            return response.json();
+        }).then(function(student) {
+            console.log(studentId ? 'Student updated' : 'Student added', student);
+            loadStudents(); // Reload the list of students
+            resetForm(); // Reset the form
+        }).catch(function(error) {
+            console.error('Error:', error);
+        });
+    };
+
+    function loadStudents() {
+        fetch('/students')
+            .then(response => response.json())
+            .then(students => {
+                const studentsTable = document.getElementById('studentsTable').getElementsByTagName('tbody')[0];
+                studentsTable.innerHTML = ''; // Clear current list
+                students.forEach(student => {
+                    let row = studentsTable.insertRow();
+                    row.insertCell(0).textContent = student.id; // Student ID
+                    row.insertCell(1).textContent = student.name;
+                    row.insertCell(2).textContent = student.age;
+
+                    let actionsCell = row.insertCell(3);
+
+                    // Edit Button
+                    let editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.onclick = function() { editStudent(student.id, student.name, student.age); };
+                    actionsCell.appendChild(editButton);
+
+                    // Delete Button
+                    let deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.onclick = function() { deleteStudent(student.id); };
+                    actionsCell.appendChild(deleteButton);
+                });
+            });
+    }
+
+    function editStudent(id, name, age) {
+        document.getElementById('studentId').value = id;
+        document.getElementById('name').value = name;
+        document.getElementById('age').value = age;
+        document.getElementById('formHeader').textContent = 'Edit Student';
+    }
+
+    function resetForm() {
+        document.getElementById('studentForm').reset();
+        document.getElementById('studentId').value = '';
+        document.getElementById('formHeader').textContent = 'Add Student';
+    }
+
+    function deleteStudent(id) {
+        fetch('/students/' + id, {
+            method: 'DELETE'
+        }).then(() => {
+            loadStudents(); // Reload the list of students
+        }).catch(error => {
+            console.error('Error deleting student:', error);
+        });
+    }
+
+    // Initial load of students
+    loadStudents();
+</script>
+</body>
+</html>
