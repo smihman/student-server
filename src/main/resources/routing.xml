@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-file="http://www.springframework.org/schema/integration/file"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/integration
+                           http://www.springframework.org/schema/integration/spring-integration-5.1.xsd
+                           http://www.springframework.org/schema/integration/file
+                           http://www.springframework.org/schema/integration/file/spring-integration-file-5.1.xsd">
+
+    <!-- Service handlers pour les groupes d'âge différents -->
+    <bean id="minorStudentHandler" class="fr.efrei.studentserver.service.MinorStudentHandler"/>
+    <bean id="majorStudentHandler" class="fr.efrei.studentserver.service.MajorStudentHandler"/>
+    <bean id="studentRouter" class="fr.efrei.studentserver.router.StudentRouter"/>
+    <bean id="errorHandler" class="fr.efrei.studentserver.service.ErrorHandlerService"/>
+
+    <!-- Canaux de journalisation -->
+    <int:channel id="loggingChannel"/>
+    <int:logging-channel-adapter channel="loggingChannel" level="INFO"/>
+    <int:channel id="studentLoggingChannel"/>
+    <int:logging-channel-adapter channel="studentLoggingChannel" level="INFO"/>
+
+    <!-- Canaux pour les étudiants mineurs et majeurs avec wire-tap pour la journalisation -->
+    <int:channel id="studentsMinorChannel">
+        <int:interceptors>
+            <int:wire-tap channel="loggingChannel"/>
+        </int:interceptors>
+    </int:channel>
+    <int:channel id="studentsMajorChannel">
+        <int:interceptors>
+            <int:wire-tap channel="loggingChannel"/>
+        </int:interceptors>
+    </int:channel>
+
+    <!-- Canaux pour l'agrégation -->
+    <int:channel id="studentInputChannel"/>
+    <int:channel id="studentProcessChannel"/>
+    <int:channel id="studentAggregatorChannel"/>
+    <int:channel id="studentOutputChannel"/>
+    <int:channel id="errorChannel"/>
+
+    <!-- Lecture des fichiers JSON entrants représentant des étudiants -->
+    <int-file:inbound-channel-adapter channel="studentInputChannel"
+                                      directory="dataIn"
+                                      filename-pattern="*.json">
+        <int:poller fixed-delay="1000"/>
+    </int-file:inbound-channel-adapter>
+
+    <!-- Conversion de JSON en objet Student -->
+    <int:json-to-object-transformer input-channel="studentInputChannel"
+                                    output-channel="studentProcessChannel"
+                                    type="fr.efrei.studentserver.domain.Student"/>
+
+    <!-- Routage des objets Student vers les canaux appropriés pour traitement -->
+    <int:recipient-list-router input-channel="studentProcessChannel">
+        <int:recipient channel="studentLoggingChannel"/>
+        <int:recipient channel="studentAggregatorChannel"/>
+    </int:recipient-list-router>
+
+    <!-- Activation de service pour le traitement des étudiants -->
+    <int:service-activator input-channel="studentsMinorChannel" ref="minorStudentHandler" method="handleStudents"/>
+    <int:service-activator input-channel="studentsMajorChannel" ref="majorStudentHandler" method="handleStudents"/>
+
+    <!-- Routage des étudiants basé sur l'âge -->
+    <int:router input-channel="studentAggregatorChannel" ref="studentRouter" method="routeStudent"/>
+
+    <!-- Agrégation des messages basée sur l'id de l'étudiant -->
+    <int:aggregator input-channel="studentAggregatorChannel"
+                    output-channel="studentOutputChannel"
+                    correlation-strategy-expression="payload.id"
+                    release-strategy-expression="size()==2"
+                    group-timeout="5000"/>
+
+    <!-- Journalisation des messages issus de l'agrégateur -->
+    <int:logging-channel-adapter channel="studentOutputChannel" level="INFO" log-full-message="true"/>
+
+    <!-- Gestion des erreurs -->
+    <int:service-activator input-channel="errorChannel" ref="errorHandler"/>
+</beans>

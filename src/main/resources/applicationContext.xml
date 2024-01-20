@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="
+            http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/integration
+            http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+    <!-- Scan for annotated components (e.g., @Service, @Component) in the specified package -->
+    <context:component-scan base-package="fr.efrei.studentserver"/>
+    <context:property-placeholder location="classpath:application.properties"/>
+    <!-- Import aggregator configuration -->
+    <import resource="classpath:routing.xml" />
+    <import resource="classpath:filtering.xml" />
+
+</beans>

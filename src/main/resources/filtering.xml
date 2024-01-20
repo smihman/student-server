@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-file="http://www.springframework.org/schema/integration/file"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/integration
+                           http://www.springframework.org/schema/integration/spring-integration-5.1.xsd
+                           http://www.springframework.org/schema/integration/file
+                           http://www.springframework.org/schema/integration/file/spring-integration-file-5.1.xsd">
+
+    <!-- Adapter pour lire les fichiers JSON du répertoire 'dataIn' -->
+    <int-file:inbound-channel-adapter channel="jsonFileChannel"
+                                      directory="dataIn"
+                                      filename-pattern="*.json">
+        <int:poller fixed-delay="1000"/>
+    </int-file:inbound-channel-adapter>
+
+    <!-- Canaux de traitement -->
+    <int:channel id="jsonFileChannel"/>
+    <int:channel id="jsonStringChannel"/>
+    <int:channel id="jsonObjectChannel"/>
+    <int:channel id="filteredJsonChannel"/>
+    <int:channel id="errorChannel"/>
+
+    <!-- Transformer le contenu du fichier JSON en String -->
+    <int-file:file-to-string-transformer input-channel="jsonFileChannel"
+                                         output-channel="jsonStringChannel"/>
+
+    <!-- Transformer la String JSON en objet Map pour faciliter l'accès aux données -->
+    <int:json-to-object-transformer input-channel="jsonStringChannel"
+                                    output-channel="jsonObjectChannel"
+                                    type="java.util.Map"/>
+
+    <!-- Filtrer les objets JSON pour ne trouver que ceux avec le nom 'Sacha' -->
+    <int:filter input-channel="jsonObjectChannel"
+                output-channel="filteredJsonChannel"
+                expression="payload['name'] == 'Sacha'"/>
+
+    <!-- Adapter pour journaliser les objets JSON filtrés -->
+    <int:logging-channel-adapter channel="filteredJsonChannel" level="INFO"/>
+
+    <!-- Gestion des erreurs -->
+    <int:service-activator input-channel="errorChannel" ref="errorHandler"/>
+    <bean id="errorHandler" class="fr.efrei.studentserver.service.ErrorHandlerService"/>
+</beans>

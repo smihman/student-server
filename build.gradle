@@ -16,12 +16,16 @@ repositories {
 }
 
 dependencies {
+	implementation group: 'org.springframework.integration', name: 'spring-integration-core', version: '6.2.1'
+
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation group: 'org.springframework.integration', name: 'spring-integration-stream', version: '6.2.1'
+	implementation group: 'org.springframework.integration', name: 'spring-integration-file', version: '6.2.1'
 }
 
 tasks.named('bootBuildImage') {
